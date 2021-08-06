@@ -1,0 +1,160 @@
+html
+    head
+        title Fork Extractor
+        meta(http-equiv='Content-Type' content='text/html; charset=UTF-8')
+        meta(name='viewport' content='width=device-width, initial-scale=1, maximum-scale=1.0')
+        link(href='https://fonts.googleapis.com/icon?family=Material+Icons' rel='stylesheet')
+        link(href='https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css' type='text/css' rel='stylesheet' media='screen,projection')
+        link(href='css/style.css' type='text/css' rel='stylesheet' media='screen,projection')
+        link(href='https://fonts.googleapis.com/css?family=Roboto+Mono' rel="stylesheet")
+    body
+        nav(class='grey darken-4' role='navigation')
+            div(class='nav-wrapper container')
+                a(id='logo-container' href='#' class='brand-logo orange-text') ForkExtractor.com
+                ul(class='right hide-on-med-and-down')
+                    li
+                        a(href='#') Home
+                ul(id='nav-mobile' class='sidenav')
+                    li
+                        a(href='#') Home
+                a(href='#' data-target='nav-mobile' class='sidenav-trigger')
+                    i(class='material-icons') menu
+        main
+            .section(class='section no-pad-bot' id='index-banner')
+                .container
+                    .row(class='center')
+                        .col(class='s12')
+                            .card-panel(class='black yellow-text text-darken-2')
+                                i(class='tiny material-icons') warning 
+                                span  Empty wallets are enough for the extractions 
+                                i(class='tiny material-icons') warning
+                    //- Step 1
+                    .row(class='center')
+                        .col(class="input-field s12")
+                            select(v-model="walletProvider")
+                                option(value="" disabled selected) Wallet Provider
+                                option(value="coinomi") Coinomi Seed
+                                option(value="extendedKey") Extended Private Key (Private Key of many addresses)
+                                option(value="wif") WIF (Private Key of unique address)
+                            label Select please
+                    //- Step 2
+                    .row(v-if="walletProvider=='coinomi'" class='center')
+                        .col(class="input-field s12")
+                            input(v-model='seed' placeholder="survey task phrase nurse reward among top frog mobile correct purchase tiger venture fatal neither" id="seed" type="text")
+                            label(for="seed") Recovery Passphrase
+                            |{{mnemonicError}}
+                    .row(v-if="walletProvider=='wif'" class='center')
+                        .col(class="input-field s12")
+                            input(v-model='wif' placeholder="5...,L...,K..." id="wif" type="text")
+                            label(for="wif") WIF
+                            |{{mnemonicError}}
+                    //-seed && !mnemonicError && 
+                    .row(v-if="keyPairs.length > 7" id="addressList" class='center')
+                        .col(class="m7 s12")
+                            h5 Current Balance / Coins forked
+                            div(v-if="forksBalances")
+                                div(v-for="(balance, forkName) in forksBalances")
+                                    p
+                                        b {{forksNames[forkName]}} ({{forkName}})
+                                        br
+                                        | {{balance != "?" ? balance : "?"}}/{{pseudoBalances[forkName]}}
+                                        br
+                                        a(v-if="balance != '0'" v-on:click="claimFrok(forkName)" class="waves-effect waves-light btn-small green white-text") REDEEM
+                                        a(v-on:click="claimFrok(forkName)" class="waves-effect waves-light btn-small green white-text" disabled v-else) REDEEM
+                            div(class="center" v-else)
+                                div(class="preloader-wrapper small active")
+                                    div(class="spinner-layer spinner-green-only")
+                                        div(class="circle-clipper left")
+                                            div(class="circle")
+                                        div(class="gap-patch")
+                                            div(class="circle")
+                                        div(class="circle-clipper right")
+                                            div(class="circle")
+                        .col(v-if="walletProvider=='coinomi'" class="m5 s12")
+                            h5 Receive Addresses
+                            p(v-for="(key, address) in getKeyPairs[0]")
+                                a(v-if="inputs[0][address]" class="rUsed" target="_blank" v-bind:href="'https://insight.bitpay.com/address/'+address") {{address}}
+                            h5 Change Addresses
+                            p(v-for="(key, address) in getKeyPairs[1]")
+                                a(v-if="inputs[1][address]" class="cUsed" target="_blank" v-bind:href="'https://insight.bitpay.com/address/'+address") {{address}}
+                        
+                        .col(v-if="walletProvider=='wif'" class="m5 s12")
+                            h5 Addresses
+                            p(v-if="true" v-for="(key, address) in getKeyPairs")
+                                a(v-if="inputs[address]" class="rUsed" target="_blank" v-bind:href="'https://insight.bitpay.com/address/'+address") {{address}}
+                    .row(class="center")
+                        .col(class="s12")
+                            .card-panel(class='black yellow-text text-darken-2')
+                                i(class='tiny material-icons') warning 
+                                span  10% service fee 
+                                i(class='tiny material-icons') warning    
+                    div(id="modal1" class="modal modal-fixed-footer")
+                        div(class="modal-content")
+                            h4 {{forksNames[redeemFork]}} ({{redeemFork}}) Redeems
+                            div(v-if="!lastRedeemsTXID" class="center")
+                                div(class="preloader-wrapper small active")
+                                    div(class="spinner-layer spinner-green-only")
+                                        div(class="circle-clipper left")
+                                            div(class="circle")
+                                        div(class="gap-patch")
+                                            div(class="circle")
+                                        div(class="circle-clipper right")
+                                            div(class="circle")
+                            div(v-else)
+                                p(v-for="redeemed in JSON.parse(lastRedeemsTXID)") TX Id: 
+                                    a(v-if="explorers[redeemFork]" target="_blank" v-bind:href="explorers[redeemFork]+redeemed.txNew") {{redeemed.txNew}}
+                                    span(v-else) {{redeemed.txNew}}
+                            span(v-if="lastRedeemsError") Some errors occurred redeeming, try again or contact us.
+                        div(class="modal-footer")
+                            a(href="#!"  class="modal-close waves-effect waves-green btn-flat") Close
+
+
+        footer(class='page-footer grey darken-4')
+            div(class='container')
+                div(class='row')
+                    div(class='col l6 s12')
+                        h5(class='white-text') ForkExtractor.com
+                        p(class='grey-text text-lighten-4') 
+                    div(class='col l3 s12 hide')
+                        h5(class='white-text') Settings
+                        ul
+                            li
+                                a(class='white-text' href='#!') Link 1
+                            li
+                                a(class='white-text' href='#!') Link 2
+                            li
+                                a(class='white-text' href='#!') Link 3
+                            li
+                                a(class='white-text' href='#!') Link 4
+                    div(class='col l3 s12 hide')
+                        h5(class='white-text') Connect
+                        ul
+                            li
+                                a(class='white-text' href='#!') Link 1
+                            li
+                                a(class='white-text' href='#!') Link 2
+                            li
+                                a(class='white-text' href='#!') Link 3
+                            li
+                                a(class='white-text' href='#!') Link 4
+            div(class='footer-copyright')
+                div(class='container') Made by 
+                    a(class="orange-text text-lighten-3" href='#!') ForkExtraction.com
+        script(src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js")
+        script(src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.js")
+        script(src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous")
+        script(src="https://cdn.jsdelivr.net/npm/bchaddrjs@0.3.2/dist/bchaddrjs-0.3.2.min.js")
+        script(src="js/bignumber.min.js")
+        script(src="js/iancoleman/bitcoinjs-3.3.2.js")
+        script(src="js/iancoleman/levenshtein.js")
+        script(src='js/iancoleman/sjcl-bip39.js')
+        script(src="js/iancoleman/wordlist_english.js")
+        script(src="js/iancoleman/wordlist_japanese.js")
+        script(src="js/iancoleman/wordlist_spanish.js")
+        script(src="js/iancoleman/wordlist_chinese_simplified.js")
+        script(src="js/iancoleman/wordlist_chinese_traditional.js")
+        script(src="js/iancoleman/wordlist_french.js")
+        script(src="js/iancoleman/wordlist_italian.js")
+        script(src="js/iancoleman/wordlist_korean.js")
+        script(src='js/iancoleman/jsbip39.js')
+        script(src="js/index.js")

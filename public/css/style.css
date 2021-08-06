@@ -1,0 +1,22 @@
+body {
+    font-family: 'Roboto Mono', monospace !important;
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+}
+main {
+    flex: 1 0 auto;
+}
+#addressList a {
+    color:black;
+}
+.rUsed {
+    background-color: #00cc66;
+}
+.cUsed {
+    background-color: #FFFF00;
+}
+.unused {
+    background-color: #CCC;
+}
+input, textarea, select { font-family:inherit; }

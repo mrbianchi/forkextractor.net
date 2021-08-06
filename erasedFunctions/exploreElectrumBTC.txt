@@ -1,0 +1,61 @@
+/*ELECTRUM
+var btcpSocket = tls.connect({port: 5222, host: "electrum.btcprivate.org"}, function() {
+    console.log("The sc socket connected. Yay!");
+  });
+var btcpResponses = [];
+var btcpResponsesTemp = "";
+btcpSocket.setEncoding('utf8');
+btcpSocket.on('data', (data) => {
+    console.log(data);
+    btcpResponsesTemp += data.toString().replace(new RegExp("\n", 'g'),"").replace(new RegExp("}{", 'g'),"},{");
+    var temp = "["+btcpResponsesTemp+"]";
+    if (IsJsonString(temp)) {
+        var responses = JSON.parse(temp);
+        btcpResponses = btcpResponses.concat(responses);
+        btcpResponsesTemp = "";
+    }
+});
+const bitcoin = require('bitcoinjs-lib')
+const crypto = require('crypto')
+const bs58 = require('bs58')
+app.get('/explorers/btcp/addrs/:addrs/utxo', (req, res) => {
+    try {
+        var id = makeId();
+        var addresses = req.params.addrs.split(',');
+        var convertedAddrs = [];
+        addresses.forEach((address)=>{
+            var decoded = bitcoin.address.fromBase58Check(address);
+            if(decoded['version'] === 0)
+                var prefix = Buffer.from(['0x13','0x25']);
+            else
+                var prefix = Buffer.from(['0x13','0xaf']);
+            var withPrefix = Buffer.concat([prefix,decoded['hash']]);
+            var hash = hash256(withPrefix)
+            hash = hash256(hash)
+            var checksum = hash.slice(0,4)
+            var address = Buffer.concat([withPrefix,checksum])
+            convertedAddrs.push(bs58.encode(address));
+        });
+        convertedAddrs.forEach((address,index)=> {
+            btcpSocket.write('{ "id": "'+id+'-'+index+'", "method": "blockchain.address.listunspent","params": [ "'+address+'" ]}\n');
+        });
+        var responses = [];
+        var interval = setInterval(()=> {
+            btcpResponses.forEach((possibleResponse,index)=>{
+                if(possibleResponse !== "" && possibleResponse.id.split("-")[0] === id){
+                    possibleResponse.id = parseInt(possibleResponse.id.split("-")[1]);
+                    btcpResponses[index] = "";
+                    responses.push(possibleResponse);
+                    
+                }
+            });
+            if(responses.length===addresses.length) {
+                res.send(electrumToInsight(addresses,responses));
+                clearInterval(interval);
+            }
+        },100);
+    }catch(error){
+        console.log(error)
+        res.send({error});
+    }
+});*/
